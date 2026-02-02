@@ -3,36 +3,37 @@ import jinja2
 from weasyprint import HTML
 from .utils import currency_format 
 
-# UPDATE: Added report_date to arguments
 def generate_performance_pdfs(df, logo_url, report_date):
     """
-    Returns a list of tuples: [('20260126_Performance_AgentName.pdf', pdf_bytes), ...]
+    Returns a list of tuples: [('filename.pdf', pdf_bytes), ...]
     """
     
-    # 1. Format Dates
-    # Format for the filename: YYYYMMDD (e.g., 20260126)
     file_date_str = report_date.strftime("%Y%m%d")
-    # Format for the visible report: Month Day, Year (e.g., January 26, 2026)
     display_date_str = report_date.strftime("%B %d, %Y")
 
-    # 2. HTML Template
     html_template = """
     <!DOCTYPE html>
     <html>
     <head>
         <style>
-            @page { size: landscape; margin: 1.5cm; }
-            body { font-family: Helvetica, Arial, sans-serif; }
-            .header { border-bottom: 2px solid #232ECF; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; }
-            .logo { max-width: 170px; }
-            .agent-name { font-size: 20px; font-weight: bold; }
-            .summary-box { background: #f9f9f9; padding: 10px; border: 1px solid #ddd; display: inline-block; margin-left: 10px; min-width: 120px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th { background: #e0e0e0; padding: 8px; text-align: center; }
-            td { border-bottom: 1px solid #eee; padding: 8px; text-align: center; }
-            td:first-child { text-align: left; }
-            .positive { color: green; font-weight: bold; }
-            .negative { color: red; font-weight: bold; }
+            @page { size: landscape; margin: 1.0cm; }
+            body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; }
+            .header { border-bottom: 2px solid #232ECF; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .logo { max-width: 160px; }
+            .agent-name { font-size: 18px; font-weight: bold; color: #000; }
+            .report-date { color: #666; font-size: 11px; margin-bottom: 5px; }
+            .summary-container { display: flex; gap: 10px; justify-content: flex-end; margin-top: 5px; }
+            .summary-box { background: #f9f9f9; padding: 6px 12px; border: 1px solid #e0e0e0; border-radius: 4px; min-width: 100px; }
+            .summary-box small { color: #555; font-size: 10px; text-transform: uppercase; }
+            .summary-box strong { display: block; font-size: 14px; color: #000; margin-top: 2px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th { background: #f0f0f0; color: #333; font-weight: bold; padding: 8px 4px; text-align: right; border-bottom: 2px solid #ccc; font-size: 10px; text-transform: uppercase; }
+            th:nth-child(1), th:nth-child(2) { text-align: left; }
+            td { border-bottom: 1px solid #eee; padding: 6px 4px; text-align: right; color: #333; }
+            td:nth-child(1), td:nth-child(2) { text-align: left; }
+            .positive { color: #008000; font-weight: bold; }
+            .negative { color: #cc0000; font-weight: bold; }
+            .neutral  { color: #333; }
         </style>
     </head>
     <body>
@@ -40,30 +41,42 @@ def generate_performance_pdfs(df, logo_url, report_date):
             <img src="{{ logo_url }}" class="logo">
             <div style="text-align: right;">
                 <div class="agent-name">{{ agent_name }}</div>
-                <div style="color: #666; font-size: 12px; margin-bottom: 10px;">Report Date: {{ date }}</div>
-                
-                <div class="summary-box">
-                    <small>Total Accounts</small><br>
-                    <strong>{{ count }}</strong>
-                </div>
-                <div class="summary-box">
-                    <small>Total Balance</small><br>
-                    <strong>${{ total | currency }}</strong>
+                <div class="report-date">Report Date: {{ date }}</div>
+                <div class="summary-container">
+                    <div class="summary-box"><small>Total Accounts</small><strong>{{ count }}</strong></div>
+                    <div class="summary-box"><small>Total AUM</small><strong>${{ total | currency }}</strong></div>
                 </div>
             </div>
         </div>
-
         <table>
             <thead>
-                <tr><th>Name</th><th>Portfolio</th><th>Balance</th><th>Performance</th></tr>
+                <tr>
+                    <th style="width: 20%;">Client</th>
+                    <th style="width: 10%;">Account ID</th>
+                    <th style="width: 12%;">Inflows</th>
+                    <th style="width: 12%;">Outflows</th>
+                    <th style="width: 12%;">Net Invested</th>
+                    <th style="width: 12%;">Market Value</th>
+                    <th style="width: 10%;">Total Return</th>
+                </tr>
             </thead>
             <tbody>
                 {% for client in clients %}
                 <tr>
                     <td>{{ client.Name }}</td>
-                    <td>{{ client.Portfolio }}</td>
-                    <td>${{ client.Balance | currency }}</td>
-                    <td><span class="{{ 'positive' if client.Performance >= 0 else 'negative' }}">{{ (client.Performance * 100) | round(2) }}%</span></td>
+                    <td>{{ client['Account Number'] }}</td>
+                    <td>{% if client['Total Incoming'] %}${{ client['Total Incoming'] | currency }}{% else %}-{% endif %}</td>
+                    <td>{% if client['Total Outgoing'] %}${{ client['Total Outgoing'] | currency }}{% else %}-{% endif %}</td>
+                    <td>{% if client['Net Deposit'] %}${{ client['Net Deposit'] | currency }}{% else %}-{% endif %}</td>
+                    <td>{% if client.Balance %}<strong>${{ client.Balance | currency }}</strong>{% else %}-{% endif %}</td>
+                    <td>
+                        {% if client.Performance != '' and client.Performance is not none %}
+                            {% set perf = (client.Performance | float * 100) | round(2) %}
+                            <span class="{% if perf > 0 %}positive{% elif perf < 0 %}negative{% else %}neutral{% endif %}">
+                                {% if perf > 0 %}+{% endif %}{{ perf }}%
+                            </span>
+                        {% else %} - {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -76,8 +89,11 @@ def generate_performance_pdfs(df, logo_url, report_date):
     env.filters['currency'] = currency_format
     template = env.from_string(html_template)
     
-    df['Balance'] = pd.to_numeric(df['Balance'], errors='coerce').fillna(0)
-    
+    numeric_cols = ['Balance', 'Total Incoming', 'Total Outgoing', 'Net Deposit', 'Performance']
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
     generated_files = []
     
     if 'Agent' not in df.columns:
@@ -86,23 +102,19 @@ def generate_performance_pdfs(df, logo_url, report_date):
     grouped = df.groupby('Agent')
     
     for agent_name, agent_df in grouped:
+        total_balance = agent_df['Balance'].sum()
         html_out = template.render(
             logo_url=logo_url,
             agent_name=agent_name,
-            date=display_date_str, # Passed to template
+            date=display_date_str,
             count=len(agent_df),
-            total=agent_df['Balance'].sum(),
+            total=total_balance,
             clients=agent_df.to_dict(orient='records')
         )
         
         pdf_bytes = HTML(string=html_out).write_pdf()
-        
-        # Safe filename creation
         safe_agent = str(agent_name).replace(' ', '_').replace('/', '-')
-        
-        # New Filename Format: 20260126_Performance_AgentName.pdf
         filename = f"{file_date_str}_Performance_{safe_agent}.pdf"
-        
         generated_files.append((filename, pdf_bytes))
         
     return generated_files
