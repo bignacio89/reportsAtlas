@@ -16,21 +16,46 @@ def generate_performance_pdfs(df, logo_url, report_date):
     <html>
     <head>
         <style>
-            @page { size: landscape; margin: 1.0cm; }
-            body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; }
-            .header { border-bottom: 2px solid #232ECF; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .logo { max-width: 160px; }
-            .agent-name { font-size: 18px; font-weight: bold; color: #000; }
-            .report-date { color: #666; font-size: 11px; margin-bottom: 5px; }
-            .summary-container { display: flex; gap: 10px; justify-content: flex-end; margin-top: 5px; }
-            .summary-box { background: #f9f9f9; padding: 6px 12px; border: 1px solid #e0e0e0; border-radius: 4px; min-width: 100px; }
-            .summary-box small { color: #555; font-size: 10px; text-transform: uppercase; }
-            .summary-box strong { display: block; font-size: 14px; color: #000; margin-top: 2px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th { background: #f0f0f0; color: #333; font-weight: bold; padding: 8px 4px; text-align: right; border-bottom: 2px solid #ccc; font-size: 10px; text-transform: uppercase; }
-            th:nth-child(1), th:nth-child(2) { text-align: left; }
-            td { border-bottom: 1px solid #eee; padding: 6px 4px; text-align: right; color: #333; }
-            td:nth-child(1), td:nth-child(2) { text-align: left; }
+            @page { size: landscape; margin: 0.8cm; }
+            body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; } 
+            
+            .header { border-bottom: 2px solid #232ECF; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .logo { max-width: 150px; }
+            .agent-name { font-size: 16px; font-weight: bold; color: #000; }
+            .report-date { color: #666; font-size: 10px; margin-bottom: 4px; }
+            
+            .summary-container { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+            .summary-box { background: #f9f9f9; padding: 5px 10px; border: 1px solid #e0e0e0; border-radius: 4px; min-width: 90px; }
+            .summary-box small { color: #555; font-size: 9px; text-transform: uppercase; }
+            .summary-box strong { display: block; font-size: 13px; color: #000; margin-top: 2px; }
+
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
+            
+            th { 
+                background: #f0f0f0; 
+                color: #333;
+                font-weight: bold;
+                padding: 6px 3px; 
+                text-align: right; 
+                border-bottom: 2px solid #ccc;
+                font-size: 9px;
+                text-transform: uppercase;
+                word-wrap: break-word;
+            }
+            /* Left align text columns, Right align money/perc columns */
+            th:nth-child(-n+4) { text-align: left; }
+
+            td { 
+                border-bottom: 1px solid #eee; 
+                padding: 5px 3px; 
+                text-align: right; 
+                color: #333;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            td:nth-child(-n+4) { text-align: left; }
+
             .positive { color: #008000; font-weight: bold; }
             .negative { color: #cc0000; font-weight: bold; }
             .neutral  { color: #333; }
@@ -48,16 +73,19 @@ def generate_performance_pdfs(df, logo_url, report_date):
                 </div>
             </div>
         </div>
+
         <table>
             <thead>
                 <tr>
-                    <th style="width: 20%;">Client</th>
+                    <th style="width: 16%;">Client</th>
                     <th style="width: 10%;">Account ID</th>
-                    <th style="width: 12%;">Inflows</th>
-                    <th style="width: 12%;">Outflows</th>
+                    <th style="width: 10%;">Portfolio</th>
+                    <th style="width: 8%;">Opened</th>
+                    <th style="width: 10%;">Inflows</th>
+                    <th style="width: 10%;">Outflows</th>
                     <th style="width: 12%;">Net Invested</th>
                     <th style="width: 12%;">Market Value</th>
-                    <th style="width: 10%;">Total Return</th>
+                    <th style="width: 12%;">Total Return</th>
                 </tr>
             </thead>
             <tbody>
@@ -65,17 +93,21 @@ def generate_performance_pdfs(df, logo_url, report_date):
                 <tr>
                     <td>{{ client.Name }}</td>
                     <td>{{ client['Account Number'] }}</td>
+                    <td>{{ client.Portfolio }}</td>
+                    <td>{{ client.Date }}</td>
+                    
                     <td>{% if client['Total Incoming'] %}${{ client['Total Incoming'] | currency }}{% else %}-{% endif %}</td>
                     <td>{% if client['Total Outgoing'] %}${{ client['Total Outgoing'] | currency }}{% else %}-{% endif %}</td>
                     <td>{% if client['Net Deposit'] %}${{ client['Net Deposit'] | currency }}{% else %}-{% endif %}</td>
                     <td>{% if client.Balance %}<strong>${{ client.Balance | currency }}</strong>{% else %}-{% endif %}</td>
+                    
                     <td>
                         {% if client.Performance != '' and client.Performance is not none %}
                             {% set perf = (client.Performance | float * 100) | round(2) %}
                             <span class="{% if perf > 0 %}positive{% elif perf < 0 %}negative{% else %}neutral{% endif %}">
                                 {% if perf > 0 %}+{% endif %}{{ perf }}%
                             </span>
-                        {% else %} - {% endif %}
+                        {% else %}-{% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -89,20 +121,18 @@ def generate_performance_pdfs(df, logo_url, report_date):
     env.filters['currency'] = currency_format
     template = env.from_string(html_template)
     
+    # Pre-processing numeric columns
     numeric_cols = ['Balance', 'Total Incoming', 'Total Outgoing', 'Net Deposit', 'Performance']
     for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
 
     generated_files = []
-    
-    if 'Agent' not in df.columns:
-        raise ValueError("Column 'Agent' not found in Excel.")
-
     grouped = df.groupby('Agent')
     
     for agent_name, agent_df in grouped:
         total_balance = agent_df['Balance'].sum()
+        
         html_out = template.render(
             logo_url=logo_url,
             agent_name=agent_name,
