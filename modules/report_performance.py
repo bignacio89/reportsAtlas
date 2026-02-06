@@ -34,7 +34,7 @@ def generate_performance_pdfs(df, logo_url, report_date):
                 padding: 8px 15px; 
                 border: 1px solid #e0e0e0; 
                 border-radius: 8px; 
-                min-width: 180px; /* Increased size to fit large balances */
+                min-width: 180px;
                 text-align: left;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.03);
             }
@@ -53,13 +53,17 @@ def generate_performance_pdfs(df, logo_url, report_date):
                 border-bottom: 2px solid #dee2e6;
                 font-size: 9px;
                 text-transform: uppercase;
+                white-space: nowrap; /* Prevent headers from wrapping */
             }
             th:nth-child(-n+4) { text-align: left; }
 
             td { 
-                padding: 10px 5px; /* Added breathing room */
+                padding: 10px 5px; 
                 text-align: right; 
                 border-bottom: 1px solid #eee;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             td:nth-child(-n+4) { text-align: left; }
 
@@ -95,16 +99,8 @@ def generate_performance_pdfs(df, logo_url, report_date):
         <table>
             <thead>
                 <tr>
-                    <th style="width: 16%;">Client</th>
-                    <th style="width: 10%;">Account ID</th>
-                    <th style="width: 10%;">Portfolio</th>
-                    <th style="width: 8%;">Opened</th>
-                    <th style="width: 10%;">Inflows</th>
-                    <th style="width: 10%;">Outflows</th>
-                    <th style="width: 12%;">Net Invested</th>
-                    <th style="width: 12%;">Market Value</th>
-                    <th style="width: 12%;">Total Return</th>
-                </tr>
+                    <th style="width: 15%;">Client</th>
+                    <th style="width: 8%;">Account ID</th> <th style="width: 9%;">Portfolio</th>  <th style="width: 7%;">Opened</th>     <th style="width: 11%;">Inflows</th>   <th style="width: 11%;">Outflows</th>  <th style="width: 13%;">Net Invested</th> <th style="width: 13%;">Market Value</th> <th style="width: 13%;">Total Return</th> </tr>
             </thead>
             <tbody>
                 {% for client in clients %}
@@ -112,7 +108,9 @@ def generate_performance_pdfs(df, logo_url, report_date):
                     <td>{{ client.Name }}</td>
                     <td>{{ client['Account Number'] }}</td>
                     <td>{{ client.Portfolio or '-' }}</td>
-                    <td>{{ client.Date }}</td> <td>{% if client['Total Incoming'] %}${{ client['Total Incoming'] | currency }}{% else %}-{% endif %}</td>
+                    <td>{{ client.Date }}</td> 
+                    
+                    <td>{% if client['Total Incoming'] %}${{ client['Total Incoming'] | currency }}{% else %}-{% endif %}</td>
                     <td>{% if client['Total Outgoing'] %}${{ client['Total Outgoing'] | currency }}{% else %}-{% endif %}</td>
                     <td>{% if client['Net Deposit'] %}${{ client['Net Deposit'] | currency }}{% else %}-{% endif %}</td>
                     <td>{% if client.Balance %}<strong>${{ client.Balance | currency }}</strong>{% else %}-{% endif %}</td>
@@ -140,11 +138,9 @@ def generate_performance_pdfs(df, logo_url, report_date):
     template = env.from_string(html_template)
     
     # --- Data Cleaning ---
-    # 1. Handle the "Opened" date (remove the 00:00:00 timestamp)
     if 'Date' in df.columns:
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.strftime('%Y-%m-%d').fillna('-')
 
-    # 2. Numeric conversion
     numeric_cols = ['Balance', 'Total Incoming', 'Total Outgoing', 'Net Deposit', 'Performance']
     for col in numeric_cols:
         if col in df.columns:
