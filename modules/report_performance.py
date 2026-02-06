@@ -16,14 +16,15 @@ def generate_performance_pdfs(df, logo_url, report_date):
     <html>
     <head>
         <style>
+            /* Reset box model to ensure padding doesn't expand widths */
+            * { box-sizing: border-box; }
+
             @page { size: landscape; margin: 0.8cm; }
-            body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #333; } 
+            body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #333; margin: 0; padding: 0; } 
             
             /* Header Section */
             .header { border-bottom: 3px solid #232ECF; padding-bottom: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-start; }
             .logo { max-width: 150px; }
-            
-            /* Agent info & Cards */
             .header-right { text-align: right; }
             .agent-name { font-size: 18px; font-weight: bold; color: #000; margin-bottom: 2px; }
             .report-date { color: #666; font-size: 10px; margin-bottom: 10px; }
@@ -34,7 +35,7 @@ def generate_performance_pdfs(df, logo_url, report_date):
                 padding: 8px 15px; 
                 border: 1px solid #e0e0e0; 
                 border-radius: 8px; 
-                min-width: 180px;
+                min-width: 190px; /* Slightly wider for very large numbers */
                 text-align: left;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.03);
             }
@@ -42,36 +43,41 @@ def generate_performance_pdfs(df, logo_url, report_date):
             .card strong { font-size: 15px; color: #000; }
 
             /* Table Styles */
-            table { width: 100%; border-collapse: collapse; margin-top: 5px; table-layout: fixed; }
+            table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-top: 5px; 
+                table-layout: fixed; /* Strictly enforces percentage widths */
+            }
             
             th { 
                 background: #f8f9fa; 
                 color: #555;
                 font-weight: bold;
-                padding: 10px 5px; 
+                padding: 10px 4px; /* Reduced horizontal padding */
                 text-align: right; 
                 border-bottom: 2px solid #dee2e6;
-                font-size: 9px;
+                font-size: 8.5px; /* Slightly smaller for better fit */
                 text-transform: uppercase;
-                white-space: nowrap; /* Prevent headers from wrapping */
+                overflow: hidden;
             }
             th:nth-child(-n+4) { text-align: left; }
 
             td { 
-                padding: 10px 5px; 
+                padding: 10px 4px; /* Reduced horizontal padding */
                 text-align: right; 
                 border-bottom: 1px solid #eee;
                 white-space: nowrap;
                 overflow: hidden;
-                text-overflow: ellipsis;
+                text-overflow: ellipsis; /* Truncates data if it exceeds width */
             }
             td:nth-child(-n+4) { text-align: left; }
 
             /* Zebra Striping */
             tr:nth-child(even) { background-color: #fafafa; }
-
-            /* Alignment for last column */
-            th:last-child, td:last-child { padding-right: 10px; }
+            
+            /* Ensure last column has some breathing room from the edge */
+            th:last-child, td:last-child { padding-right: 8px; }
 
             .positive { color: #008000; font-weight: bold; }
             .negative { color: #cc0000; font-weight: bold; }
@@ -99,8 +105,16 @@ def generate_performance_pdfs(df, logo_url, report_date):
         <table>
             <thead>
                 <tr>
-                    <th style="width: 15%;">Client</th>
-                    <th style="width: 8%;">Account ID</th> <th style="width: 9%;">Portfolio</th>  <th style="width: 7%;">Opened</th>     <th style="width: 11%;">Inflows</th>   <th style="width: 11%;">Outflows</th>  <th style="width: 13%;">Net Invested</th> <th style="width: 13%;">Market Value</th> <th style="width: 13%;">Total Return</th> </tr>
+                    <th style="width: 23%;">Client</th>
+                    <th style="width: 8%;">Account ID</th>
+                    <th style="width: 9%;">Portfolio</th>
+                    <th style="width: 7%;">Opened</th>
+                    <th style="width: 10%;">Inflows</th>
+                    <th style="width: 10%;">Outflows</th>
+                    <th style="width: 11%;">Net Invested</th>
+                    <th style="width: 11%;">Market Value</th>
+                    <th style="width: 11%;">Total Return</th>
+                </tr>
             </thead>
             <tbody>
                 {% for client in clients %}
@@ -128,6 +142,7 @@ def generate_performance_pdfs(df, logo_url, report_date):
                 </tr>
                 {% endfor %}
             </tbody>
+        <tbody>
         </table>
     </body>
     </html>
@@ -137,7 +152,7 @@ def generate_performance_pdfs(df, logo_url, report_date):
     env.filters['currency'] = currency_format
     template = env.from_string(html_template)
     
-    # --- Data Cleaning ---
+    # Data Cleaning
     if 'Date' in df.columns:
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.strftime('%Y-%m-%d').fillna('-')
 
