@@ -16,69 +16,81 @@ def generate_performance_pdfs(df, logo_url, report_date):
     <html>
     <head>
         <style>
-            /* Reset box model to ensure padding doesn't expand widths */
+            /* Critical: Force padding to stay inside the defined widths */
             * { box-sizing: border-box; }
 
-            @page { size: landscape; margin: 0.8cm; }
-            body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #333; margin: 0; padding: 0; } 
+            @page { 
+                size: landscape; 
+                margin: 0.8cm; 
+            }
             
-            /* Header Section */
-            .header { border-bottom: 3px solid #232ECF; padding-bottom: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-start; }
-            .logo { max-width: 150px; }
+            body { 
+                font-family: Helvetica, Arial, sans-serif; 
+                font-size: 9.5px; 
+                color: #333; 
+                margin: 0; 
+                padding: 0; 
+            } 
+            
+            .header { 
+                border-bottom: 3px solid #232ECF; 
+                padding-bottom: 12px; 
+                margin-bottom: 12px; 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: flex-start; 
+            }
+            
+            .logo { max-width: 140px; }
             .header-right { text-align: right; }
-            .agent-name { font-size: 18px; font-weight: bold; color: #000; margin-bottom: 2px; }
-            .report-date { color: #666; font-size: 10px; margin-bottom: 10px; }
+            .agent-name { font-size: 16px; font-weight: bold; color: #000; margin-bottom: 2px; }
+            .report-date { color: #666; font-size: 9px; margin-bottom: 8px; }
             
-            .card-container { display: flex; gap: 12px; justify-content: flex-end; }
+            .card-container { display: flex; gap: 10px; justify-content: flex-end; }
             .card { 
                 background: #ffffff; 
-                padding: 8px 15px; 
+                padding: 6px 12px; 
                 border: 1px solid #e0e0e0; 
-                border-radius: 8px; 
-                min-width: 190px; /* Slightly wider for very large numbers */
+                border-radius: 6px; 
+                width: 190px; 
                 text-align: left;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
             }
-            .card small { color: #666; font-size: 9px; text-transform: uppercase; display: block; margin-bottom: 4px; }
-            .card strong { font-size: 15px; color: #000; }
+            .card small { color: #666; font-size: 8px; text-transform: uppercase; display: block; }
+            .card strong { font-size: 14px; color: #000; }
 
-            /* Table Styles */
+            /* TABLE SETTINGS */
             table { 
                 width: 100%; 
                 border-collapse: collapse; 
-                margin-top: 5px; 
-                table-layout: fixed; /* Strictly enforces percentage widths */
+                table-layout: fixed; /* Strictly enforces the percentages below */
+                margin-top: 5px;
             }
             
+            th, td {
+                padding: 10px 5px; 
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                border-bottom: 1px solid #eee;
+            }
+
             th { 
                 background: #f8f9fa; 
                 color: #555;
                 font-weight: bold;
-                padding: 10px 4px; /* Reduced horizontal padding */
                 text-align: right; 
                 border-bottom: 2px solid #dee2e6;
-                font-size: 8.5px; /* Slightly smaller for better fit */
+                font-size: 8.5px;
                 text-transform: uppercase;
-                overflow: hidden;
             }
-            th:nth-child(-n+4) { text-align: left; }
 
-            td { 
-                padding: 10px 4px; /* Reduced horizontal padding */
-                text-align: right; 
-                border-bottom: 1px solid #eee;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis; /* Truncates data if it exceeds width */
-            }
-            td:nth-child(-n+4) { text-align: left; }
+            /* Left-align text columns, Right-align numeric columns */
+            th:nth-child(-n+4), td:nth-child(-n+4) { text-align: left; }
 
             /* Zebra Striping */
             tr:nth-child(even) { background-color: #fafafa; }
             
-            /* Ensure last column has some breathing room from the edge */
-            th:last-child, td:last-child { padding-right: 8px; }
-
             .positive { color: #008000; font-weight: bold; }
             .negative { color: #cc0000; font-weight: bold; }
         </style>
@@ -105,15 +117,13 @@ def generate_performance_pdfs(df, logo_url, report_date):
         <table>
             <thead>
                 <tr>
-                    <th style="width: 23%;">Client</th>
-                    <th style="width: 8%;">Account ID</th>
-                    <th style="width: 9%;">Portfolio</th>
-                    <th style="width: 7%;">Opened</th>
-                    <th style="width: 10%;">Inflows</th>
-                    <th style="width: 10%;">Outflows</th>
+                    <th style="width: 30%;">Client</th>
+                    <th style="width: 10%;">Account ID</th>
+                    <th style="width: 15%;">Portfolio</th>
+                    <th style="width: 10%;">Opened</th>
                     <th style="width: 11%;">Net Invested</th>
-                    <th style="width: 11%;">Market Value</th>
-                    <th style="width: 11%;">Total Return</th>
+                    <th style="width: 12%;">Market Value</th>
+                    <th style="width: 12%;">Total Return</th>
                 </tr>
             </thead>
             <tbody>
@@ -124,8 +134,6 @@ def generate_performance_pdfs(df, logo_url, report_date):
                     <td>{{ client.Portfolio or '-' }}</td>
                     <td>{{ client.Date }}</td> 
                     
-                    <td>{% if client['Total Incoming'] %}${{ client['Total Incoming'] | currency }}{% else %}-{% endif %}</td>
-                    <td>{% if client['Total Outgoing'] %}${{ client['Total Outgoing'] | currency }}{% else %}-{% endif %}</td>
                     <td>{% if client['Net Deposit'] %}${{ client['Net Deposit'] | currency }}{% else %}-{% endif %}</td>
                     <td>{% if client.Balance %}<strong>${{ client.Balance | currency }}</strong>{% else %}-{% endif %}</td>
                     
@@ -142,7 +150,6 @@ def generate_performance_pdfs(df, logo_url, report_date):
                 </tr>
                 {% endfor %}
             </tbody>
-        <tbody>
         </table>
     </body>
     </html>
@@ -156,7 +163,7 @@ def generate_performance_pdfs(df, logo_url, report_date):
     if 'Date' in df.columns:
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.strftime('%Y-%m-%d').fillna('-')
 
-    numeric_cols = ['Balance', 'Total Incoming', 'Total Outgoing', 'Net Deposit', 'Performance']
+    numeric_cols = ['Balance', 'Net Deposit', 'Performance']
     for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
