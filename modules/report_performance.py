@@ -16,13 +16,9 @@ def generate_performance_pdfs(df, logo_url, report_date):
     <html>
     <head>
         <style>
-            /* Critical: Force padding to stay inside the defined widths */
             * { box-sizing: border-box; }
 
-            @page { 
-                size: landscape; 
-                margin: 0.8cm; 
-            }
+            @page { size: landscape; margin: 0.8cm; }
             
             body { 
                 font-family: Helvetica, Arial, sans-serif; 
@@ -59,11 +55,10 @@ def generate_performance_pdfs(df, logo_url, report_date):
             .card small { color: #666; font-size: 8px; text-transform: uppercase; display: block; }
             .card strong { font-size: 14px; color: #000; }
 
-            /* TABLE SETTINGS */
             table { 
                 width: 100%; 
                 border-collapse: collapse; 
-                table-layout: fixed; /* Strictly enforces the percentages below */
+                table-layout: fixed; 
                 margin-top: 5px;
             }
             
@@ -79,14 +74,21 @@ def generate_performance_pdfs(df, logo_url, report_date):
                 background: #f8f9fa; 
                 color: #555;
                 font-weight: bold;
-                text-align: right; 
                 border-bottom: 2px solid #dee2e6;
                 font-size: 8.5px;
                 text-transform: uppercase;
             }
 
-            /* Left-align text columns, Right-align numeric columns */
+            /* --- ALIGNMENT LOGIC --- */
+
+            /* Left-align first 4 columns (Text/Date) */
             th:nth-child(-n+4), td:nth-child(-n+4) { text-align: left; }
+
+            /* CENTER headers for the last 3 numeric columns */
+            th:nth-child(n+5) { text-align: center; }
+
+            /* KEEP numeric data right-aligned (standard practice) */
+            td:nth-child(n+5) { text-align: right; }
 
             /* Zebra Striping */
             tr:nth-child(even) { background-color: #fafafa; }
@@ -133,10 +135,8 @@ def generate_performance_pdfs(df, logo_url, report_date):
                     <td>{{ client['Account Number'] }}</td>
                     <td>{{ client.Portfolio or '-' }}</td>
                     <td>{{ client.Date }}</td> 
-                    
                     <td>{% if client['Net Deposit'] %}${{ client['Net Deposit'] | currency }}{% else %}-{% endif %}</td>
                     <td>{% if client.Balance %}<strong>${{ client.Balance | currency }}</strong>{% else %}-{% endif %}</td>
-                    
                     <td>
                         {% if client.Performance != '' and client.Performance is not none and client.Performance == client.Performance %}
                             {% set perf = (client.Performance | float * 100) | round(2) %}
@@ -159,7 +159,6 @@ def generate_performance_pdfs(df, logo_url, report_date):
     env.filters['currency'] = currency_format
     template = env.from_string(html_template)
     
-    # Data Cleaning
     if 'Date' in df.columns:
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.strftime('%Y-%m-%d').fillna('-')
 
@@ -173,7 +172,6 @@ def generate_performance_pdfs(df, logo_url, report_date):
     
     for agent_name, agent_df in grouped:
         total_balance = agent_df['Balance'].sum()
-        
         html_out = template.render(
             logo_url=logo_url,
             agent_name=agent_name,
@@ -182,7 +180,6 @@ def generate_performance_pdfs(df, logo_url, report_date):
             total=total_balance,
             clients=agent_df.to_dict(orient='records')
         )
-        
         pdf_bytes = HTML(string=html_out).write_pdf()
         safe_agent = str(agent_name).replace(' ', '_').replace('/', '-')
         filename = f"{file_date_str}_Performance_{safe_agent}.pdf"
