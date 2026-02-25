@@ -102,4 +102,23 @@ if uploaded_file is not None:
                 st.download_button(
                     label="📥 Download All (ZIP)",
                     data=zip_buffer.getvalue(),
-                    file_name=f"{report_type
+                    file_name=f"{report_type}_Reports_{report_date.strftime('%Y%m%d')}.zip",
+                    mime="application/zip",
+                    type="primary"
+                )
+            
+            with st.expander("📄 View Individual Files"):
+                for filename, pdf_bytes in generated_pdfs:
+                    st.download_button(
+                        label=f"Download {filename}",
+                        data=pdf_bytes,
+                        file_name=filename,
+                        key=filename
+                    )
+
+    except Exception as e:
+        st.error(f"🚨 An error occurred during processing: {e}")
+        st.exception(e) # This shows the full traceback to help you debug
+
+else:
+    st.info("Please upload a file to begin.")
