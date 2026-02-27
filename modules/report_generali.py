@@ -18,7 +18,7 @@ def generate_generali_pdfs(df, logo_url, report_date):
             .header { border-bottom: 3px solid #232ECF; padding-bottom: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end; }
             .logo-container { display: flex; flex-direction: column; }
             .logo { max-width: 140px; margin-bottom: 5px; }
-            .report-title { font-size: 13px; font-weight: bold; color: #232ECF; text-transform: uppercase; }
+            .report-title { font-size: 13px; font-weight: bold; color: #000; text-transform: uppercase; }
             .header-right { text-align: right; }
             .agent-name { font-size: 16px; font-weight: bold; color: #000; }
             .card-container { display: flex; gap: 10px; justify-content: flex-end; }
