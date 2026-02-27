@@ -104,7 +104,8 @@ def generate_generali_pdfs(df, logo_url, report_date):
             th:nth-child(7), td:nth-child(7) { width: 10%; } /* Rendimiento     */
 
             /* ── COLUMN ALIGNMENT — HEADERS ─────────────────────────── */
-            th:nth-child(1), th:nth-child(2) { text-align: left;   }
+            th:nth-child(1) { text-align: left; }
+            th:nth-child(2) { text-align: center; }
             th:nth-child(3), th:nth-child(4) { text-align: center; }
             th:nth-child(5), th:nth-child(6),
             th:nth-child(7)                  { text-align: right;  }
