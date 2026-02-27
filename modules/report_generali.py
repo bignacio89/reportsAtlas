@@ -111,8 +111,8 @@ def generate_generali_pdfs(df, logo_url, report_date):
             th:nth-child(7)                  { text-align: right;  }
 
             /* ── COLUMN ALIGNMENT — DATA CELLS ──────────────────────── */
-            td:nth-child(1), td:nth-child(2) { text-align: left;   }
-            td:nth-child(3), td:nth-child(4) { text-align: center; }
+            td:nth-child(1) { text-align: left;   }
+            td:nth-child(2), td:nth-child(3), td:nth-child(4) { text-align: center; }
             td:nth-child(5), td:nth-child(6),
             td:nth-child(7)                  { text-align: right;  }
 
