@@ -22,8 +22,10 @@ def _fmt_pct(val):
 
 def generate_axa_pdfs(excel_dict, logo_url, report_date):
     """
-    Generates full AXA reports including Product Summaries, 
-    KPI Highlights, and Agent Name Mapping.
+    AXA Report Generator
+    - Updated: Uses 'Inversión actual' instead of 'Aportaciones'
+    - Updated: Column order (Inversión then Saldo)
+    - Updated: New KPI Card for Total Frozen Premium Amount
     """
     file_date_str = report_date.strftime("%Y%m%d")
     display_date_str = report_date.strftime("%B %d, %Y")
@@ -34,7 +36,6 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
         mapping_path = Path(__file__).parent.parent / "assets" / "agentes.csv"
         if mapping_path.exists():
             df_mapping = pd.read_csv(mapping_path)
-            # Clean codes: Remove decimals, spaces, and force to string
             df_mapping['code'] = df_mapping['code'].astype(str).str.strip().str.replace('.0', '', regex=False)
             name_map = dict(zip(df_mapping['code'], df_mapping['name']))
             print(f"✅ DEBUG: Loaded {len(name_map)} agents from agentes.csv")
@@ -48,25 +49,24 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
     if df_contratos.empty or df_clientes.empty:
         raise ValueError("El archivo AXA debe contener las hojas 'Contratos' y 'Clientes'.")
 
-    # Standardize column names (remove hidden spaces)
     df_contratos.columns = df_contratos.columns.str.strip()
     df_clientes.columns = df_clientes.columns.str.strip()
 
     # Filter for Active Contracts
     df_vigentes = df_contratos[df_contratos['Estado'] == 'Vigente'].copy()
     
-    # Merge with Client names from the Clientes sheet
+    # Merge with Client names
     df_cli_sub = df_clientes[['Cartera', 'Cliente']].drop_duplicates(subset='Cartera')
     df_merged = pd.merge(df_vigentes, df_cli_sub, on='Cartera', how='left')
 
-    # Flag paralyzed contracts for the KPI card
+    # Flag paralyzed contracts
     df_merged['_paralizado'] = df_merged['Situación plan de primas'] == 'Plan de primas paralizado'
 
     # Detect the correct column for the Mediator/Agent
     agent_col = 'Cod. Mediador' if 'Cod. Mediador' in df_merged.columns else 'Asesor'
 
-    # Clean numeric columns for calculations
-    numeric_cols = ['Saldo actual', 'Importe aportaciones actual', 'Variación patrimonial actual', 'Prima', 'Rent. Desde inicio actual']
+    # Clean numeric columns (Included 'Inversión actual' here)
+    numeric_cols = ['Saldo actual', 'Inversión actual', 'Variación patrimonial actual', 'Prima', 'Rent. Desde inicio actual']
     for col in numeric_cols:
         if col in df_merged.columns:
             df_merged[col] = pd.to_numeric(df_merged[col], errors='coerce').fillna(0)
@@ -75,7 +75,7 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
     if 'Fecha de adquisición' in df_merged.columns:
         df_merged['Fecha de adquisición'] = pd.to_datetime(df_merged['Fecha de adquisición'], errors='coerce').dt.strftime('%d/%m/%Y').fillna('-')
 
-    # 3. HTML TEMPLATE (The "Atlas" Look)
+    # 3. HTML TEMPLATE
     html_template = """
     <!DOCTYPE html>
     <html lang="es">
@@ -83,28 +83,28 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
         <style>
             * { box-sizing: border-box; }
             @page { size: landscape; margin: 0.8cm; }
-            body { font-family: Helvetica, Arial, sans-serif; font-size: 9px; color: #333; margin: 0; padding: 0; } 
+            body { font-family: Helvetica, Arial, sans-serif; font-size: 8.5px; color: #333; margin: 0; padding: 0; } 
             
             .header { border-bottom: 3px solid #232ECF; padding-bottom: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end; }
-            .logo { max-width: 140px; margin-bottom: 5px; }
-            .report-title { font-size: 13px; font-weight: bold; color: #000; text-transform: uppercase; letter-spacing: 0.5px; }
+            .logo { max-width: 130px; margin-bottom: 5px; }
+            .report-title { font-size: 12px; font-weight: bold; color: #000; text-transform: uppercase; letter-spacing: 0.5px; }
             
             .header-right { text-align: right; }
-            .agent-name { font-size: 16px; font-weight: bold; color: #000; margin-bottom: 2px; }
-            .report-date { color: #666; font-size: 9px; margin-bottom: 8px; }
+            .agent-name { font-size: 15px; font-weight: bold; color: #000; margin-bottom: 2px; }
+            .report-date { color: #666; font-size: 8px; margin-bottom: 8px; }
             
-            .card-container { display: flex; gap: 8px; justify-content: flex-end; }
-            .card { background: #ffffff; padding: 6px 10px; border: 1px solid #e0e0e0; border-radius: 6px; min-width: 120px; text-align: left; }
-            .card small { color: #666; font-size: 8px; text-transform: uppercase; display: block; }
-            .card strong { font-size: 13px; color: #000; }
+            .card-container { display: flex; gap: 6px; justify-content: flex-end; }
+            .card { background: #ffffff; padding: 5px 8px; border: 1px solid #e0e0e0; border-radius: 6px; min-width: 105px; text-align: left; }
+            .card small { color: #666; font-size: 7px; text-transform: uppercase; display: block; line-height: 1.1; }
+            .card strong { font-size: 11px; color: #000; }
             .card.alert { border-color: #cc0000; background-color: #fff5f5; }
             .card.alert strong { color: #cc0000; }
 
-            .section-title { font-size: 11px; font-weight: bold; color: #232ECF; margin: 15px 0 5px 0; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 3px;}
+            .section-title { font-size: 10px; font-weight: bold; color: #232ECF; margin: 12px 0 4px 0; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 2px;}
             
-            table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 15px; }
-            th, td { padding: 6px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px solid #eee; }
-            th { background: #f8f9fa; color: #555; font-weight: bold; border-bottom: 2px solid #dee2e6; font-size: 8px; text-transform: uppercase; }
+            table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 12px; }
+            th, td { padding: 5px 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px solid #eee; }
+            th { background: #f8f9fa; color: #555; font-weight: bold; border-bottom: 2px solid #dee2e6; font-size: 7.5px; text-transform: uppercase; }
 
             .text-left { text-align: left; }
             .text-center { text-align: center; }
@@ -127,10 +127,12 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
                 <div class="report-date">Valoración: {{ date }} | Cód: {{ agent_code }}</div>
                 <div class="card-container">
                     <div class="card"><small>Clientes</small><strong>{{ total_clientes }}</strong></div>
-                    <div class="card"><small>Contratos Vigentes</small><strong>{{ count }}</strong></div>
                     <div class="card"><small>Saldo Total</small><strong>{{ total_saldo | eur }}</strong></div>
                     <div class="card {% if n_paralizados > 0 %}alert{% endif %}">
                         <small>Primas Paralizadas</small><strong>{{ n_paralizados }}</strong>
+                    </div>
+                    <div class="card {% if total_prima_paralizada > 0 %}alert{% endif %}">
+                        <small>Importe Paralizado</small><strong>{{ total_prima_paralizada | eur }}</strong>
                     </div>
                 </div>
             </div>
@@ -141,11 +143,11 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
             <thead>
                 <tr>
                     <th class="text-left" style="width: 30%;">Producto</th>
-                    <th class="text-center" style="width: 10%;">Contratos</th>
+                    <th class="text-center" style="width: 8%;">Contratos</th>
+                    <th class="text-right" style="width: 15%;">Inversión Actual</th>
                     <th class="text-right" style="width: 15%;">Saldo Actual</th>
-                    <th class="text-right" style="width: 15%;">Aportaciones</th>
                     <th class="text-right" style="width: 15%;">Variación Patrim.</th>
-                    <th class="text-right" style="width: 15%;">Prima Mensual</th>
+                    <th class="text-right" style="width: 17%;">Prima Mensual</th>
                 </tr>
             </thead>
             <tbody>
@@ -153,8 +155,8 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
                 <tr>
                     <td class="text-left">{{ p.nombre }}</td>
                     <td class="text-center">{{ p.contratos }}</td>
+                    <td class="text-right">{{ p.inversion | eur }}</td>
                     <td class="text-right"><strong>{{ p.saldo | eur }}</strong></td>
-                    <td class="text-right">{{ p.aportaciones | eur }}</td>
                     <td class="text-right">
                         <span class="{% if p.variacion > 0 %}positive{% elif p.variacion < 0 %}negative{% endif %}">
                             {{ p.variacion | eur }}
@@ -171,14 +173,14 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
             <thead>
                 <tr>
                     <th class="text-left" style="width: 18%;">Cliente</th>
-                    <th class="text-left" style="width: 12%;">Cartera</th>
+                    <th class="text-left" style="width: 11%;">Cartera</th>
                     <th class="text-left" style="width: 16%;">Producto</th>
-                    <th class="text-center" style="width: 9%;">F. Adquisición</th>
-                    <th class="text-right" style="width: 9%;">Prima</th>
+                    <th class="text-center" style="width: 8%;">F. Adquisición</th>
+                    <th class="text-right" style="width: 8%;">Prima</th>
                     <th class="text-center" style="width: 9%;">Periodicidad</th>
-                    <th class="text-right" style="width: 9%;">Saldo Actual</th>
-                    <th class="text-right" style="width: 9%;">Aportaciones</th>
-                    <th class="text-right" style="width: 9%;">Rent. Inicio</th>
+                    <th class="text-right" style="width: 10%;">Inversión Actual</th>
+                    <th class="text-right" style="width: 10%;">Saldo Actual</th>
+                    <th class="text-right" style="width: 10%;">Rent. Inicio</th>
                 </tr>
             </thead>
             <tbody>
@@ -190,8 +192,8 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
                     <td class="text-center">{{ c['Fecha de adquisición'] }}</td>
                     <td class="text-right">{{ c.Prima | eur }}</td>
                     <td class="text-center">{{ c['Periodicidad prima'] }}</td>
+                    <td class="text-right">{{ c['Inversión actual'] | eur }}</td>
                     <td class="text-right"><strong>{{ c['Saldo actual'] | eur }}</strong></td>
-                    <td class="text-right">{{ c['Importe aportaciones actual'] | eur }}</td>
                     <td class="text-right">
                         <span class="{% if c['Rent. Desde inicio actual'] > 0 %}positive{% elif c['Rent. Desde inicio actual'] < 0 %}negative{% endif %}">
                             {{ c['Rent. Desde inicio actual'] | pct }}
@@ -212,11 +214,10 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
     
     generated_files = []
     
-    # 4. LOOP PER AGENT & GENERATE PDF
+    # 4. LOOP PER AGENT
     valid_agents = df_merged.dropna(subset=[agent_col])
     for agent_code, agent_df in valid_agents.groupby(agent_col):
         
-        # Mapping logic for Name
         try:
             code_key = str(int(float(agent_code)))
         except:
@@ -224,18 +225,21 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
         
         real_name = name_map.get(code_key, f"Mediador {code_key}")
 
-        # Summary by Product Calculation
+        # KPI Calculation for Frozen Premiums (Sum of Prima where paralyzed)
+        total_prima_paralizada = agent_df.loc[agent_df['_paralizado'], 'Prima'].sum()
+
+        # Summary by Product Calculation (Swapped Aportaciones for Inversión)
         prod_group = agent_df.groupby('Producto').agg(
             contratos=('Cartera', 'count'),
             saldo=('Saldo actual', 'sum'),
-            aportaciones=('Importe aportaciones actual', 'sum'),
+            inversion=('Inversión actual', 'sum'),
             variacion=('Variación patrimonial actual', 'sum'),
             prima_mens=('Prima', lambda x: x[agent_df.loc[x.index, 'Periodicidad prima'] == 'Mensual'].sum()),
         ).reset_index()
 
         productos_list = prod_group.rename(columns={'Producto': 'nombre'}).to_dict(orient='records')
 
-        # Rendering
+        # Render HTML
         html_out = template.render(
             logo_url=logo_url,
             agent_display_name=real_name,
@@ -245,13 +249,14 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
             total_clientes=agent_df['Cliente'].nunique(),
             total_saldo=agent_df['Saldo actual'].sum(),
             n_paralizados=agent_df['_paralizado'].sum(),
+            total_prima_paralizada=total_prima_paralizada,
             productos=productos_list,
             contratos=agent_df.sort_values('Saldo actual', ascending=False).to_dict(orient='records')
         )
         
         pdf_bytes = HTML(string=html_out, base_url=".").write_pdf()
         
-        # Safe filename
+        # Filename creation
         safe_name = "".join([c for c in real_name if c.isalnum() or c in (' ', '_')]).strip().replace(' ', '_')
         filename = f"{file_date_str}_AXA_{safe_name}.pdf"
         generated_files.append((filename, pdf_bytes))
