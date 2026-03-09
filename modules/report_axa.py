@@ -194,8 +194,21 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
     generated_files = []
     
     # 4. Generate PDF per Agent
-    valid_agents = df_merged.dropna(subset=['Cod. Mediador'])
-    for agent_name, agent_df in valid_agents.groupby('Cod. Mediador'):
+    # Clean up column names just in case there are accidental spaces in the Excel file
+    df_merged.columns = df_merged.columns.str.strip()
+
+    # Automatically detect if the file uses 'Cod. Mediador' or 'Asesor'
+    if 'Cod. Mediador' in df_merged.columns:
+        agent_col = 'Cod. Mediador'
+    elif 'Asesor' in df_merged.columns:
+        agent_col = 'Asesor'
+    else:
+        raise KeyError("No se encontró la columna 'Cod. Mediador' ni 'Asesor' en el archivo Excel.")
+
+    # Drop rows where the agent column is empty
+    valid_agents = df_merged.dropna(subset=[agent_col])
+    
+    for agent_name, agent_df in valid_agents.groupby(agent_col):
         
         # Product Grouping Logic
         prod_group = agent_df.groupby('Producto').agg(
