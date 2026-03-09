@@ -194,8 +194,8 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
     generated_files = []
     
     # 4. Generate PDF per Agent
-    valid_agents = df_merged.dropna(subset=['Asesor'])
-    for agent_name, agent_df in valid_agents.groupby('Asesor'):
+    valid_agents = df_merged.dropna(subset=['Cod. Mediador'])
+    for agent_name, agent_df in valid_agents.groupby('Cod. Mediador'):
         
         # Product Grouping Logic
         prod_group = agent_df.groupby('Producto').agg(
