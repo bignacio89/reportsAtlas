@@ -23,9 +23,8 @@ def _fmt_pct(val):
 def generate_axa_pdfs(excel_dict, logo_url, report_date):
     """
     AXA Report Generator
-    - Updated: Uses 'Inversión actual' instead of 'Aportaciones'
-    - Updated: Column order (Inversión then Saldo)
-    - Updated: New KPI Card for Total Frozen Premium Amount
+    - Updated: Removed 'Variación Patrimonial' from Product Summary
+    - Includes: 'Inversión actual' swap, column reordering, and Frozen Premium KPI cards
     """
     file_date_str = report_date.strftime("%Y%m%d")
     display_date_str = report_date.strftime("%B %d, %Y")
@@ -65,7 +64,7 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
     # Detect the correct column for the Mediator/Agent
     agent_col = 'Cod. Mediador' if 'Cod. Mediador' in df_merged.columns else 'Asesor'
 
-    # Clean numeric columns (Included 'Inversión actual' here)
+    # Clean numeric columns
     numeric_cols = ['Saldo actual', 'Inversión actual', 'Variación patrimonial actual', 'Prima', 'Rent. Desde inicio actual']
     for col in numeric_cols:
         if col in df_merged.columns:
@@ -142,12 +141,11 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
         <table>
             <thead>
                 <tr>
-                    <th class="text-left" style="width: 30%;">Producto</th>
-                    <th class="text-center" style="width: 8%;">Contratos</th>
-                    <th class="text-right" style="width: 15%;">Inversión Actual</th>
-                    <th class="text-right" style="width: 15%;">Saldo Actual</th>
-                    <th class="text-right" style="width: 15%;">Variación Patrim.</th>
-                    <th class="text-right" style="width: 17%;">Prima Mensual</th>
+                    <th class="text-left" style="width: 35%;">Producto</th>
+                    <th class="text-center" style="width: 10%;">Contratos</th>
+                    <th class="text-right" style="width: 18%;">Inversión Actual</th>
+                    <th class="text-right" style="width: 18%;">Saldo Actual</th>
+                    <th class="text-right" style="width: 19%;">Prima Mensual</th>
                 </tr>
             </thead>
             <tbody>
@@ -157,11 +155,6 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
                     <td class="text-center">{{ p.contratos }}</td>
                     <td class="text-right">{{ p.inversion | eur }}</td>
                     <td class="text-right"><strong>{{ p.saldo | eur }}</strong></td>
-                    <td class="text-right">
-                        <span class="{% if p.variacion > 0 %}positive{% elif p.variacion < 0 %}negative{% endif %}">
-                            {{ p.variacion | eur }}
-                        </span>
-                    </td>
                     <td class="text-right">{{ p.prima_mens | eur }}</td>
                 </tr>
                 {% endfor %}
@@ -225,15 +218,13 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
         
         real_name = name_map.get(code_key, f"Mediador {code_key}")
 
-        # KPI Calculation for Frozen Premiums (Sum of Prima where paralyzed)
         total_prima_paralizada = agent_df.loc[agent_df['_paralizado'], 'Prima'].sum()
 
-        # Summary by Product Calculation (Swapped Aportaciones for Inversión)
+        # Summary by Product Calculation (Variacion removed from agg)
         prod_group = agent_df.groupby('Producto').agg(
             contratos=('Cartera', 'count'),
             saldo=('Saldo actual', 'sum'),
             inversion=('Inversión actual', 'sum'),
-            variacion=('Variación patrimonial actual', 'sum'),
             prima_mens=('Prima', lambda x: x[agent_df.loc[x.index, 'Periodicidad prima'] == 'Mensual'].sum()),
         ).reset_index()
 
@@ -256,7 +247,6 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
         
         pdf_bytes = HTML(string=html_out, base_url=".").write_pdf()
         
-        # Filename creation
         safe_name = "".join([c for c in real_name if c.isalnum() or c in (' ', '_')]).strip().replace(' ', '_')
         filename = f"{file_date_str}_AXA_{safe_name}.pdf"
         generated_files.append((filename, pdf_bytes))
