@@ -131,7 +131,7 @@ def generate_axa_pdfs(excel_dict, logo_url, report_date):
                         <small>Primas Paralizadas</small><strong>{{ n_paralizados }}</strong>
                     </div>
                     <div class="card {% if total_prima_paralizada > 0 %}alert{% endif %}">
-                        <small>Primas perdidas</small><strong>{{ total_prima_paralizada | eur }}</strong>
+                        <small>Mensual Parado</small><strong>{{ total_prima_paralizada | eur }}</strong>
                     </div>
                 </div>
             </div>
